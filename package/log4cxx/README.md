@@ -1,4 +1,4 @@
-Chocolatey Package for Log4cxx.
+# Chocolatey Package for Log4cxx.
 
 This package is beta quality and designed for a specific application.
 At this time it is not recommended to distribute this package outside of the
@@ -8,119 +8,85 @@ To build the package, follow these steps.
 
 You need Git, Visual Studio 2017 Command line tools, CMake, Chocolatey, and a text editor.
 
-# building on Windows Server 2016
+## References
 
-## refs
-
-* https://github.com/aescande/log4cxxWin32
-
-## APR
-
-* [apr 1.5.2](http://archive.apache.org/dist/apr/apr-1.5.2-win32-src.zip)
+* Build steps and source patch based on https://github.com/aescande/log4cxxWin32
+* [apr 1.5.2]http://archive.apache.org/dist/apr/apr-1.5.2-win32-src.zip)
 * [apt-util 1.5.4](http://archive.apache.org/dist/apr/apr-util-1.5.4-win32-src.zip)
-
-## log4cxx
-
 * [apache-log4cxx 0.10.0](https://archive.apache.org/dist/logging/log4cxx/0.10.0/apache-log4cxx-0.10.0.zip)
 
-## steps
+## Build Instructions
 
-### install Visual Studio 2017
+### Install Chocolatey
+https://chocolatey.org/install
 
+### Install Visual Studio 2017
 https://visualstudio.microsoft.com/downloads/
 
-Make sure you have the Windows SDK selected when installing VisualStudio.
+Make sure you install the Windows SDK, this is an option you select when installing VisualStudio.
 
-### install msys2
+### Fetch code and apply patches
+Open a Visual Studio Native Tools command prompt
 
-Technically this is optional but it's handy to have the Unix shell experience when applying the patches.
+```
+cd choco-packages\package\log4cxx
+call run.bat
+```
 
-    choco install -y msys2
+Run `msys2` from a command prompt
 
-### fetch code and apply patches
+* First install unzip tool (if you haven't before)
+  * `pacman -S msys/unzip`
+* Fetch and patch the code
+  * `cd choco-packages/package/log4cxx`
+  * `./tools/fetch_and_patch_source.sh`
 
-First install some tools for msys2
+### Open `ap/log4cxx/projects/log4cxx.dsw`
 
-    pacman -S msys/unzip
-
-Then do the following
-
-    wget http://archive.apache.org/dist/apr/apr-1.5.2-win32-src.zip
-    wget http://archive.apache.org/dist/apr/apr-util-1.5.4-win32-src.zip
-    wget https://archive.apache.org/dist/logging/log4cxx/0.10.0/apache-log4cxx-0.10.0.zip
-
-    unzip apr-1.5.2-win32-src.zip > /dev/null 2>&1
-    unzip apr-util-1.5.4-win32-src.zip > /dev/null 2>&1
-    unzip apache-log4cxx-0.10.0.zip > /dev/null 2>&1
-
-    mkdir ap
-    mv apr-1.5.2 ap/apr
-    mv apr-util-1.5.4 ap/apr-util
-    mv apache-log4cxx-0.10.0 ap/log4cxx
-
-    cd ap/log4cxx
-    ./configure-aprutil.bat
-    ./configure.bat
-
-    sed -i "/#include <vector>/ a #include<iterator>" ../log4cxx/src/main/cpp/stringhelper.cpp
-    sed -i "/namespace log4cxx/ i #define DELETED_CTORS(T) T(const T&) = delete; T& operator=(const T&) = delete;\n\n#define DEFAULTED_AND_DELETED_CTORS(T) T() = default; T(const T&) = delete; T& operator=(const T&) = delete;\n" ../log4cxx/src/main/include/log4cxx/helpers/objectimpl.h
-    sed -i "/END_LOG4CXX_CAST_MAP()/ a \  DEFAULTED_AND_DELETED_CTORS(PatternConverter)" ../log4cxx/src/main/include/log4cxx/pattern/patternconverter.h
-    sed -i "/virtual ~RollingPolicyBase();/ i \          DELETED_CTORS(RollingPolicyBase)" ../log4cxx/src/main/include/log4cxx/rolling/RollingPolicyBase.h
-    sed -i "/virtual ~TriggeringPolicy();/ i \             DEFAULTED_AND_DELETED_CTORS(TriggeringPolicy)" ../log4cxx/src/main/include/log4cxx/rolling/TriggeringPolicy.h
-    sed -i "/Filter();/ a \                        DELETED_CTORS(Filter)" ../log4cxx/src/main/include/log4cxx/spi/Filter.h
-    sed -i "/virtual ~Layout();/ i \                DEFAULTED_AND_DELETED_CTORS(Layout)" ../log4cxx/src/main/include/log4cxx/Layout.h
-    sed -i -e "s/defined(_MSC_VER) \&\&/defined(_MSC_VER) \&\& _MSC_VER < 1600 \&\&/" ../log4cxx/src/main/include/log4cxx/log4cxx.h
-
-### build in VisualStudio
-
-#### open log4cxx.dsw
+* Double click on `ap/log4cxx/projects/log4cxx.dsw` and choose Visual Studio 2017 as the application to open it
+* When prompted for a "One-way upgrade", Click OK to continue
 
 ![](image/01-log4cxx.png)
-
-Double-click `log4cxx.dsw` to open the project in VisualStudio.
-
 ![](image/02-oneway_upgrade.png)
 ![](image/04-VSready.png)
 
 
-#### set the right platform
+### Set the right platform
 
-Right-click solution, then click "Configuration Manager..."
+* Right-click "Solution 'log4cxx'" in the Solution Explorer panel on the right side, then click "Configuration Manager..."
+* From the "Active Solution Platform" dropdown, choose the platform of choice. In the below images, we are using x64
 
 ![](image/05-ConfigurationManager.png)
-
-The following is a demo of using x64 instead of x86. Your use case may differ.
-
 ![](image/07-ConfigurationManager1.png)
 ![](image/13-ConfigurationManager7.png)
 
-#### retarget solution
+### Retarget solution
 
-Right-click solution, then click "Retarget solution..."
+* Right-click solution again, then choose "Retarget solution..."
+* In the dialog, select the correct `Windows SDK Version` and click `OK`.
 
 ![](image/15-RetargetSolution.png)
-
 ![](image/16-RetargetProjects.png)
-
-Select the correct `Windows SDK Version` and click `OK`.
-
 ![](image/17-RetargetProjects_DONE.png)
 
-#### additional lib
+### rpcrt4 fix
 
 To fix a potential build issue, add `rpcrt4.lib` as `Additional Dependency`.
+* Right click project `log4cxx` and select "Properties" at the bottom
+* `Configuration Properties > Linker > All Options > Additional Dependencies` - use the right side arrow to edit this property and add `rpcrt4.lib` to the list
+* Press "Apply" on the properties editor to finish
 
 ![](image/18-log4cxx_Properties.png)
 ![](image/20-AdditionalDeps_rpcrt4.lib.png)
 
-#### build
+### Build
 
-Right-click log4cxx, then click build
+Right-click the `log4cxx` project in the Solution Explorer, and choose "Build"
 
 ![](image/22-log4cxx_Build.png)
 ![](image/28-log4cxx_Build_DONE.png)
 
-### create nupack
+### Create Nupack
 
 - Copy log4cxxd.lib and log4cxx.dll to the package lib/ directory.
 - Find the debug symbols (a .pdb file) in the build directory and copy it to the package lib/ directory. I have to use File Explorer's search to find it.
